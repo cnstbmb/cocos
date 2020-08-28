@@ -5,13 +5,18 @@
 // Learn life-cycle callbacks:
 //  - https://docs.cocos.com/creator/manual/en/scripting/life-cycle-callbacks.html
 
-const {ccclass, property} = cc._decorator;
+const { ccclass, property } = cc._decorator;
+
+enum eMoveDirection {
+    left = -1,
+    idle = 0,
+    right = 1
+}
 
 @ccclass
 export default class Platform extends cc.Component {
 
-    left: boolean = false;
-    right: boolean = false;
+    side: eMoveDirection = eMoveDirection.idle;
     moving: boolean = false;
     x: number;
 
@@ -28,7 +33,7 @@ export default class Platform extends cc.Component {
 
     // LIFE-CYCLE CALLBACKS:
 
-    onLoad () {
+    onLoad() {
         this.watchPositions();
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_UP, this.onKeyUp, this);
@@ -75,64 +80,48 @@ export default class Platform extends cc.Component {
     }
 
     onKeyUp(event: KeyboardEvent) {
-        if(event.keyCode == cc.macro.KEY.left) {
-            this.left = false;
-        } else if (event.keyCode == cc.macro.KEY.right) {
-            this.right = false;
+        if (event.keyCode == cc.macro.KEY.left || event.keyCode == cc.macro.KEY.right) {
+            this.side = eMoveDirection.idle;
         }
     }
 
     onKeyDown(event: KeyboardEvent) {
-        if(event.keyCode == cc.macro.KEY.left) {
-            this.left = true;
+        if (event.keyCode == cc.macro.KEY.left) {
+            this.side = eMoveDirection.left;
         } else if (event.keyCode == cc.macro.KEY.right) {
-            this.right = true;
+            this.side = eMoveDirection.right
         }
     }
 
-    start () {
+    start() {
     }
 
-    getDeltaByKeys(): number {
-        if(this.left) {
-            return -this.Delta;
-        }
+    setPosition(pos: number) {
+        const newPos: number = (pos > this.maxPos) ? this.maxPos : (pos < this.minPos) ? this.minPos : pos;
 
-        if (this.right) {
-            return this.Delta;
-        }
+        this.node.x = newPos;
+        this.node.emit('moved', newPos);
     }
 
-    updateByKey(delta: number) {
-        let pos = this.node.x + delta;
-
-        if (pos > this.maxPos) {
-            pos = this.maxPos;
-        } else if (pos < this.minPos) {
-            pos = this.minPos;
+    updateByKey() {
+        if (this.side === eMoveDirection.idle) {
+            return
         }
 
-        this.node.x = pos;
+        this.setPosition(this.node.x + this.Delta * this.side);
     }
 
     updateByTouch() {
-        if (this.x > this.maxPos) {
-            this.x = this.maxPos;
-        } else if (this.x < this.minPos) {
-            this.x = this.minPos
-        }
-
-        this.node.x = this.x;
+        this.setPosition(this.x);
     }
 
-    update (dt) {
+    update(dt) {
         if (this.moving) {
             return this.updateByTouch();
         }
-        
-        if (this.left || this.right) {
-            const delta = this.getDeltaByKeys();
-            this.updateByKey(delta);
+
+        if (this.side !== eMoveDirection.idle) {
+            this.updateByKey();
         }
     }
 }
