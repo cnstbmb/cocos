@@ -11,8 +11,9 @@ const { ccclass, property } = cc._decorator;
 export default class Game extends cc.Component {
 
     onLoad() {
-        const manager = cc.director.getCollisionManager();
-        manager.enabled = true;
+        // const manager = cc.director.getCollisionManager();
+        // manager.enabled = true;
+        cc.director.getPhysicsManager().enabled = true;
     }
 
     start() {

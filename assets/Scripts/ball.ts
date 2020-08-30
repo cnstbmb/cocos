@@ -9,33 +9,24 @@ const { ccclass, property } = cc._decorator;
 
 @ccclass
 export default class Ball extends cc.Component {
-    vector: cc.Vec2 = new cc.Vec2(1, 2);
+
     isMoving: boolean;
-    speed: number = 1000;
 
     isTapped: boolean;
     tapTime: number;
 
+    body: cc.RigidBody;
+
     @property(cc.Node)
     Platform: cc.Node = null;
-
-    @property(cc.Node)
-    TopWall: cc.Node = null
-
-    @property(cc.Node)
-    RightWall: cc.Node = null
-
-    @property(cc.Node)
-    BottomWall: cc.Node = null
-
-    @property(cc.Node)
-    LeftWall: cc.Node = null
 
     onLoad() {
         this.Platform.on('moved', this.onPlatformMoved, this);
 
         cc.systemEvent.on(cc.SystemEvent.EventType.KEY_DOWN, this.onKeyDown, this);
         this.node.parent.on(cc.Node.EventType.TOUCH_START, this.onTouchstart, this);
+
+        this.body = this.node.getComponent(cc.RigidBody);
     }
 
     onDestroy() {
@@ -59,7 +50,7 @@ export default class Ball extends cc.Component {
             const timeDelta = time - this.tapTime;
             if (timeDelta < 400) {
                 this.isTapped = false;
-                this.isMoving = true;
+                this.runBall();
             } else {
                 this.tapTime = time
             }
@@ -67,48 +58,39 @@ export default class Ball extends cc.Component {
     }
     onKeyDown(event: KeyboardEvent) {
         if (!this.isMoving && (event.keyCode === cc.macro.KEY.enter || event.keyCode === cc.macro.KEY.space)) {
-            this.isMoving = true;
+            this.runBall();
         }
     }
     onPlatformMoved(pos: number) {
-        if (this.isMoving) {
-            return;
-        }
-
-        this.node.x = pos
-    }
-
-    onCollisionEnter(other: cc.Collider, self: cc.Collider) {
-        switch(other.node) {
-            case this.LeftWall:
-            case this.RightWall:
-                this.vector.x = -this.vector.x
-                break;
-            case this.TopWall:
-            case this.Platform:
-                this.vector.y = -this.vector.y;
-                break;
-            case this.BottomWall:
-                this.resetBall();
-                break;
+        if (!this.isMoving) {
+            this.node.x = pos;
         }
     }
 
-    resetBall() {
+    resetBall(){
+        this.body.linearVelocity = cc.v2(0,0)
         this.isMoving = false;
-        this.node.y = -870;
-        this.vector = new cc.Vec2(1,2);
-        this.node.x = this.Platform.x;
+        this.node.runAction(cc.moveTo(0, this.Platform.x, -870));
+    }
+
+    runBall() {
+        this.isMoving = true;
+        this.body.linearVelocity = cc.v2(500, 1000);
     }
 
     start() {
 
     }
 
-    update(dt) {
-        if(this.isMoving) {
-            this.node.x += this.vector.x * dt * this.speed;
-            this.node.y += this.vector.y * dt * this.speed;
+    update(){
+        if(!this.isMoving){
+            this.node.y = -870;
+        }
+    }
+
+    onBeginContact(contact: cc.PhysicsContact, self: cc.PhysicsCollider, other: cc.PhysicsCollider) {
+        if(other.node.name === 'bottom_wall') {
+            this.resetBall();
         }
     }
 }
